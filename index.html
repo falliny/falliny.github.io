@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chatbott</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #e0e7ff;
+      font-family: Arial, sans-serif;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+      font-size: 24px;
+      color: #333;
+    }
+
+    .api-key-container {
+      margin-bottom: 10px;
+      display: flex;
+      gap: 5px;
+    }
+
+    .api-key-container input {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      width: 240px;
+    }
+
+    .api-key-container button {
+      padding: 10px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .api-key-container button:hover {
+      background-color: #0056b3;
+    }
+
+    .chat-container {
+      width: 360px;
+      height: 640px;
+      background-color: white;
+      border-radius: 20px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .chat-header {
+      background-color: #007bff;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .chat-body {
+      flex: 1;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+    }
+
+    .message {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .user-message {
+      justify-content: flex-end;
+    }
+
+    .bot-message {
+      justify-content: flex-start;
+    }
+
+    .message-bubble {
+      max-width: 70%;
+      padding: 10px;
+      border-radius: 10px;
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+
+    .user-message .message-bubble {
+      background-color: #ffd966;
+      align-self: flex-end;
+    }
+
+    .bot-message .message-bubble {
+      background-color: #f1f1f1;
+      align-self: flex-start;
+    }
+
+    .chat-footer {
+      display: flex;
+      padding: 10px;
+      gap: 5px;
+      border-top: 1px solid #ccc;
+      background-color: #f9f9f9;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      padding: 10px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <h1>안녕하세요, 무엇을 도와드릴까요?</h1>
+
+  <div class="api-key-container">
+    <input type="password" id="apiKeyInput" placeholder="API 키를 입력하세요..." />
+    <button onclick="initializeChat()">확인</button>
+  </div>
+
+  <div class="chat-container">
+    <div class="chat-header">Samsung</div>
+    <div class="chat-body" id="chatBody"></div>
+    <div class="chat-footer">
+      <input type="text" id="userInput" placeholder="메시지를 입력하세요..." onkeydown="handleEnter(event)" />
+      <button onclick="sendMessage()">전송</button>
+    </div>
+  </div>
+
+  <script>
+    let apiKey = '';
+
+    function handleEnter(event) {
+      if (event.key === "Enter") {
+        sendMessage();
+      }
+    }
+
+    function initializeChat() {
+      const inputKey = document.getElementById('apiKeyInput').value;
+      if (!inputKey) {
+        alert('API 키를 입력해주세요.');
+        return;
+      }
+      apiKey = inputKey;
+
+      // 유효한 키인지 확인하기 위해 간단한 호출 시도
+      fetch('https://api.openai.com/v1/models', {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`
+        }
+      })
+        .then(response => {
+          if (response.ok) {
+            startChat();
+          } else {
+            alert('유효하지 않은 API 키입니다.');
+          }
+        })
+        .catch(() => alert('API 키 확인 중 오류가 발생했습니다.'));
+    }
+
+    function startChat() {
+      const chatBody = document.getElementById('chatBody');
+      const botMessage = document.createElement('div');
+      botMessage.className = 'message bot-message';
+      botMessage.innerHTML = `<div class="message-bubble">안녕하세요!</div>`;
+      chatBody.appendChild(botMessage);
+    }
+
+    async function sendMessage() {
+      const userInput = document.getElementById('userInput').value;
+      if (!userInput) return;
+
+      const chatBody = document.getElementById('chatBody');
+
+      const userMessage = document.createElement('div');
+      userMessage.className = 'message user-message';
+      userMessage.innerHTML = `<div class="message-bubble">${userInput}</div>`;
+      chatBody.appendChild(userMessage);
+
+      chatBody.scrollTop = chatBody.scrollHeight;
+      document.getElementById('userInput').value = '';
+
+      try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: 'gpt-3.5-turbo',
+            messages: [{ role: 'user', content: userInput }]
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const reply = formatResponse(data.choices[0].message.content);
+
+        const botMessage = document.createElement('div');
+        botMessage.className = 'message bot-message';
+        botMessage.innerHTML = `<div class="message-bubble">${reply}</div>`;
+        chatBody.appendChild(botMessage);
+
+        chatBody.scrollTop = chatBody.scrollHeight;
+      } catch (error) {
+        const errorMessage = document.createElement('div');
+        errorMessage.className = 'message bot-message';
+        errorMessage.innerHTML = `<div class="message-bubble">오류 발생: ${error.message}</div>`;
+        chatBody.appendChild(errorMessage);
+      }
+    }
+
+    function formatResponse(text) {
+      return text.replace(/\n/g, '\n\n');
+    }
+  </script>
+</body>
+</html>
